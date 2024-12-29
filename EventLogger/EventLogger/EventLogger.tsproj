@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.56">
+	<DataTypes>
+		<DataType>
+			<Name GUID="{77C79D35-EC2B-45F3-AD55-76541A68CBAE}" PersistentType="true">PersonalEventLogger</Name>
+			<DisplayName TxtId=""><![CDATA[EventLogger for personal use]]></DisplayName>
+			<EventId>
+				<Name Id="1">MainDoor</Name>
+				<DisplayName TxtId=""><![CDATA[Main Door Opened]]></DisplayName>
+				<Severity>Verbose</Severity>
+			</EventId>
+			<EventId>
+				<Name Id="2">SideDoor</Name>
+				<DisplayName TxtId=""><![CDATA[Side Door Opened]]></DisplayName>
+				<Severity>Verbose</Severity>
+			</EventId>
+			<Hides>
+				<Hide GUID="{77DBE63B-7D0E-4814-86AB-8E15AA625792}"/>
+			</Hides>
+		</DataType>
+	</DataTypes>
+	<Project ProjectGUID="{4EFB5E73-FF1E-47B1-9041-476D7C074C42}" TargetNetId="5.17.161.84.1.1" ShowHideConfigurations="#x6">
+		<System>
+			<Tasks>
+				<Task Id="3" Priority="4" CycleTime="20000" AmsPort="350" AdtTasks="true">
+					<Name>PlcTask</Name>
+				</Task>
+			</Tasks>
+		</System>
+		<Plc>
+			<Project GUID="{DFC77EFB-7218-465C-9ECC-B339A597D7DD}" Name="Test 1" PrjFilePath="Test 1\Test 1.plcproj" TmcFilePath="Test 1\Test 1.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="Test 1\Test 1.tmc" TmcHash="{C1CD5524-C29F-1640-5485-1CB50E94DE63}">
+					<Name>Test 1 Instance</Name>
+					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
+					<Contexts>
+						<Context>
+							<Id>0</Id>
+							<Name>PlcTask</Name>
+							<ManualConfig>
+								<OTCID>#x02010030</OTCID>
+							</ManualConfig>
+							<Priority>4</Priority>
+							<CycleTime>2000000</CycleTime>
+						</Context>
+					</Contexts>
+					<TaskPouOids>
+						<TaskPouOid Prio="4" OTCID="#x08502001"/>
+					</TaskPouOids>
+				</Instance>
+			</Project>
+		</Plc>
+	</Project>
+</TcSmProject>

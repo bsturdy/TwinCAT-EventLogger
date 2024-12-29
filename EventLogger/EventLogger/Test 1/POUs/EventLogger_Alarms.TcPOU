@@ -1,0 +1,256 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="EventLogger_Alarms" Id="{adb7947d-436f-4b06-817f-937f8d93f340}" SpecialFunc="None">
+    <Declaration><![CDATA[// Manages an Event Class, creates an alarm for each Event in the class which can be controlled
+
+// Uses Event Class pre-made in the 'Type System': called 'PersonalEventLogger'
+// Uses Events pre-made in the 'Event Class'
+// Number of events must be manually defined in '_EventCount'
+// Severity of events must be manually defined in '_EventSeverity'
+
+{attribute 'no_explicit_call' := 'Do not call this block directly, use the METHODS this block has'}
+FUNCTION_BLOCK EventLogger_Alarms
+VAR
+	
+	_IsRunningToggle		: BOOL;
+	_i						: INT;
+	
+	_Alarm					: ARRAY [1.._EventCount] OF FB_TcAlarm;
+	_IsConfirmationNeeded	: ARRAY [1.._EventCount] OF BOOL;
+	_Event					: ARRAY [1.._EventCount] OF TcEventEntry;
+	_EventSeverity			: ARRAY [1.._EventCount] OF TcEventSeverity := 
+								// Manually enter the severity of each alarm here:
+								[TcEventSeverity.Error, 
+								 TcEventSeverity.Warning];
+	
+END_VAR
+VAR CONSTANT
+	
+	_EventCount				: INT := 2;
+
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="ClearAlarm" Id="{17c46d22-1f13-4e66-bbf1-5a792e8c9873}">
+      <Declaration><![CDATA[METHOD ClearAlarm : HRESULT
+VAR_INPUT
+	AlarmId						: UDINT;
+	ResetConfirmationState		: BOOL;
+END_VAR
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+// Clears an alarm 
+
+ClearAlarm := _Alarm[AlarmId].Clear(nTimeStamp := 0, bResetConfirmation := ResetConfirmationState);
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ConfirmAlarm" Id="{7b36f05a-feed-4a82-9307-ccab0ebee3c1}">
+      <Declaration><![CDATA[METHOD ConfirmAlarm : HRESULT
+VAR_INPUT
+	AlarmId		: UDINT;
+END_VAR
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+// Acknowledges an alarm 
+// This does not clear the alarm
+// This does change the alarms state internally
+
+ConfirmAlarm := _Alarm[AlarmId].Confirm(nTimeStamp := 0);
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CyclicUpdate" Id="{c4e480e3-9000-4d20-99ed-c0fb37124a08}">
+      <Declaration><![CDATA[METHOD CyclicUpdate : BOOL]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+_IsRunningToggle := NOT(_IsRunningToggle);
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{7c57da50-0899-423f-a02b-0027f2eed138}">
+      <Declaration><![CDATA[{attribute 'no_explicit_call' := 'You do not need to use this METHOD'}
+METHOD FB_init : BOOL 
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+// Initialise the event parameters and then the alarms that are tied to the events
+
+FOR _i := 1 TO _EventCount BY 1 DO
+	
+	// All alarms need confirmation
+	_IsConfirmationNeeded[_i] := TRUE;
+	
+END_FOR
+
+FOR _i := 1 TO _EventCount BY 1 DO
+	
+	// Defining event settings / parameters
+	_Event[_i].uuidEventClass 		:= TC_EVENT_CLASSES.PersonalEventLogger;
+	_Event[_i].nEventId 			:= INT_TO_UDINT(_i);
+	_Event[_i].eSeverity			:= _EventSeverity[_i];
+	
+	// Important to set both the Events eFlag and the Alarms bWithConfirmation to the same bool value
+	_Event[_i].eFlags 				:= BOOL_TO_BYTE(_IsConfirmationNeeded[_i]);
+	
+END_FOR
+
+FOR _i := 1 TO _EventCount BY 1 DO
+
+	_Alarm[_i].CreateEx
+	(
+		stEventEntry := _Event[_i],
+		ipSourceInfo := 0,
+		
+		// Important to set both the Events eFlag and the Alarms bWithConfirmation to the same bool value
+		bWithConfirmation := _IsConfirmationNeeded[_i]
+	);	
+
+END_FOR
+
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Get_AlarmCount" Id="{3cb94ad8-0203-4cbf-8705-25f2790828d4}">
+      <Declaration><![CDATA[METHOD Get_AlarmCount : INT // Returns the number of alarms that exist
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+Get_AlarmCount := _EventCount;
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Get_AreAlarmsRaised" Id="{16f8c94b-3c38-41cf-93dc-61541dea3355}">
+      <Declaration><![CDATA[METHOD Get_AreAlarmsRaised : ARRAY [1.._EventCount] OF BOOL // Returns an array of BOOLS to represent if an alarm is raised
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+FOR _i := 1 TO _EventCount DO
+    Get_AreAlarmsRaised[_i] := _Alarm[_i].bRaised;
+END_FOR
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Get_ConfirmationStates" Id="{f6e46e15-6287-4803-a798-b1dc11bcf5af}">
+      <Declaration><![CDATA[METHOD Get_ConfirmationStates : ARRAY [1.._EventCount] OF TcEventConfirmationState // Returns an array of confirmation states of alarms
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+FOR _i := 1 TO _EventCount DO
+    Get_ConfirmationStates[_i] := _Alarm[_i].eConfirmationState;
+END_FOR
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Get_IsRunningToggle" Id="{f07feb80-cf26-431a-b02e-ed5c2448b2de}">
+      <Declaration><![CDATA[METHOD Get_IsRunningToggle : BOOL // Returns a BOOL that toggles states when the object's cyclic update is running
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+Get_IsRunningToggle := _IsRunningToggle;
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="TriggerAlarm" Id="{f23f0251-0395-401a-8fd8-58d27e94a151}">
+      <Declaration><![CDATA[METHOD TriggerAlarm : HRESULT
+VAR_INPUT
+	AlarmId		: UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+// Triggers an alarm
+
+TriggerAlarm := _Alarm[AlarmId].Raise(nTimeStamp := 0);
+RETURN;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="EventLogger_Alarms">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.ClearAlarm">
+      <LineId Id="6" Count="2" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.ConfirmAlarm">
+      <LineId Id="30" Count="0" />
+      <LineId Id="20" Count="4" />
+      <LineId Id="14" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.CyclicUpdate">
+      <LineId Id="6" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.FB_init">
+      <LineId Id="18" Count="1" />
+      <LineId Id="28" Count="2" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="25" Count="1" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="40" Count="1" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="16" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.Get_AlarmCount">
+      <LineId Id="8" Count="0" />
+      <LineId Id="5" Count="1" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.Get_AreAlarmsRaised">
+      <LineId Id="10" Count="0" />
+      <LineId Id="6" Count="2" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.Get_ConfirmationStates">
+      <LineId Id="11" Count="0" />
+      <LineId Id="6" Count="1" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="0" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.Get_IsRunningToggle">
+      <LineId Id="7" Count="0" />
+      <LineId Id="5" Count="1" />
+    </LineIds>
+    <LineIds Name="EventLogger_Alarms.TriggerAlarm">
+      <LineId Id="10" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

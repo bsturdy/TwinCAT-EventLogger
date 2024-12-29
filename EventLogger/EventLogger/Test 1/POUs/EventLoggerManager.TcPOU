@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="EventLoggerManager" Id="{00074df1-855e-4b51-b563-ca7e33d8c400}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM EventLoggerManager
+VAR
+	Alarms						: EventLogger_Alarms;
+	NumberOfAlarms				: INT;
+	IsRunningToggle				: BOOL;
+	AreAlarmsRaised				: ARRAY [1..2] OF BOOL;
+	AlarmConfirmationStates		: ARRAY [1..2] OF TcEventConfirmationState;
+	AlarmId						: UDINT := 1; // 1 = Main Door, 2 = Side Door, simple examples not linked to IO
+	
+	State						: INT;
+	i							: INT;
+	Result						: HRESULT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+// Manages the 'EventLogger_Alarms' object
+
+// Change 'Id' to pick the alarm that will be interacted with (based on the ID of the Event Classes event, currently 1 or 2)
+// Change 'State' to modify the alarms current state
+
+Alarms.CyclicUpdate();
+
+IsRunningToggle 			:= Alarms.Get_IsRunningToggle();
+NumberOfAlarms 				:= Alarms.Get_AlarmCount();
+AreAlarmsRaised 			:= Alarms.Get_AreAlarmsRaised();
+AlarmConfirmationStates 	:= Alarms.Get_ConfirmationStates();
+
+CASE State OF
+	
+	0:
+		;
+		
+	1: // Raise
+		Result := Alarms.TriggerAlarm(AlarmId := AlarmId);
+		State := 0;
+		
+	2: // Confirm
+		Result := Alarms.ConfirmAlarm(AlarmId := AlarmId);
+		State := 0;
+		
+	3: // Clear
+		Result := Alarms.ClearAlarm(AlarmId := AlarmId, ResetConfirmationState := TRUE);
+		State := 0;
+
+END_CASE
+
+RETURN;]]></ST>
+    </Implementation>
+    <LineIds Name="EventLoggerManager">
+      <LineId Id="358" Count="0" />
+      <LineId Id="327" Count="30" />
+      <LineId Id="320" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
